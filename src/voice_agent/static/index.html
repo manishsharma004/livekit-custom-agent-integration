@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiveKit Voice Agent Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe6;
+        --panel: rgba(255, 252, 247, 0.92);
+        --text: #1d1a17;
+        --muted: #63584d;
+        --accent: #0f766e;
+        --accent-strong: #115e59;
+        --border: rgba(29, 26, 23, 0.12);
+        --shadow: 0 20px 60px rgba(17, 24, 39, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 35%),
+          radial-gradient(circle at bottom right, rgba(234, 88, 12, 0.16), transparent 30%),
+          var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      main {
+        width: min(980px, calc(100vw - 32px));
+        margin: 40px auto;
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 24px;
+      }
+
+      section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+      }
+
+      .hero {
+        padding: 32px;
+      }
+
+      .hero h1 {
+        margin: 0 0 12px;
+        font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+        font-size: clamp(2rem, 4vw, 3.6rem);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p,
+      .status,
+      .hint,
+      .log {
+        color: var(--muted);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 12px;
+        margin-bottom: 20px;
+        font-size: 0.92rem;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #f59e0b;
+        transition: background 150ms ease;
+      }
+
+      .dot.connected {
+        background: #10b981;
+      }
+
+      .panel {
+        padding: 24px;
+      }
+
+      form {
+        display: grid;
+        gap: 14px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 0.94rem;
+      }
+
+      input {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        padding: 14px 16px;
+        font: inherit;
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+        transform: none;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: white;
+      }
+
+      .primary:hover {
+        background: var(--accent-strong);
+      }
+
+      .secondary {
+        background: rgba(17, 24, 39, 0.08);
+        color: var(--text);
+      }
+
+      .status {
+        min-height: 1.4rem;
+        margin: 12px 0 0;
+      }
+
+      .log {
+        margin-top: 20px;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px dashed var(--border);
+        background: rgba(255, 255, 255, 0.52);
+        min-height: 120px;
+        white-space: pre-wrap;
+      }
+
+      .facts {
+        display: grid;
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .fact {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid var(--border);
+      }
+
+      .fact strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      audio {
+        width: 100%;
+        margin-top: 18px;
+      }
+
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+          margin: 20px auto 28px;
+        }
+
+        .hero,
+        .panel {
+          padding: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="badge"><span class="dot" id="statusDot"></span><span id="badgeText">Idle</span></div>
+        <h1>Voice agent demo for your local cluster.</h1>
+        <p>
+          This browser demo creates a LiveKit room, dispatches the agent, joins with your microphone,
+          and plays remote audio back in the page.
+        </p>
+        <div class="facts">
+          <div class="fact">
+            <strong>Microphone preferred</strong>
+            Use a browser on the same machine as MicroK8s so <code>ws://127.0.0.1:7880</code> can reach LiveKit.
+            If microphone APIs are unavailable in the current browser context, the demo still joins in listen-only mode.
+          </div>
+          <div class="fact">
+            <strong>Demo-only flow</strong>
+            The backend issues participant tokens and performs explicit agent dispatch for each room.
+            Speech goes through LiveKit Inference and Kokoro, while the LLM step uses local Ollama Gemma.
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <form id="joinForm">
+          <label>
+            Your name
+            <input id="participantName" name="participantName" maxlength="64" placeholder="demo-user" />
+          </label>
+          <label>
+            Room name
+            <input id="roomName" name="roomName" maxlength="64" placeholder="demo-room" />
+          </label>
+          <div class="actions">
+            <button class="primary" id="joinButton" type="submit">Join Demo</button>
+            <button class="secondary" id="leaveButton" type="button" disabled>Leave</button>
+          </div>
+        </form>
+        <p class="status" id="statusText">Ready.</p>
+        <div class="log" id="eventLog">No events yet.</div>
+        <div id="audioHost"></div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Room, RoomEvent } from 'https://cdn.jsdelivr.net/npm/livekit-client@2/+esm';
+
+      const joinForm = document.getElementById('joinForm');
+      const joinButton = document.getElementById('joinButton');
+      const leaveButton = document.getElementById('leaveButton');
+      const roomInput = document.getElementById('roomName');
+      const participantInput = document.getElementById('participantName');
+      const statusText = document.getElementById('statusText');
+      const eventLog = document.getElementById('eventLog');
+      const audioHost = document.getElementById('audioHost');
+      const statusDot = document.getElementById('statusDot');
+      const badgeText = document.getElementById('badgeText');
+
+      let room;
+
+      function setStatus(message, connected = false) {
+        statusText.textContent = message;
+        badgeText.textContent = connected ? 'Connected' : 'Idle';
+        statusDot.classList.toggle('connected', connected);
+      }
+
+      function appendLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const line = `[${timestamp}] ${message}`;
+        eventLog.textContent = eventLog.textContent === 'No events yet.' ? line : `${eventLog.textContent}\n${line}`;
+      }
+
+      async function leaveRoom() {
+        if (!room) {
+          return;
+        }
+
+        await room.disconnect();
+        room = undefined;
+        audioHost.replaceChildren();
+        joinButton.disabled = false;
+        leaveButton.disabled = true;
+        setStatus('Disconnected.');
+        appendLog('Disconnected from room.');
+      }
+
+      async function joinRoom(event) {
+        event.preventDefault();
+
+        joinButton.disabled = true;
+        setStatus('Creating demo session...');
+
+        const response = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            room_name: roomInput.value.trim() || null,
+            participant_name: participantInput.value.trim() || null,
+          }),
+        });
+
+        if (!response.ok) {
+          const message = await response.text();
+          joinButton.disabled = false;
+          setStatus('Failed to create session.');
+          appendLog(`Session creation failed: ${message}`);
+          return;
+        }
+
+        const session = await response.json();
+        roomInput.value = session.room_name;
+        participantInput.value = session.participant_name;
+
+        room = new Room();
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === 'audio') {
+            const element = track.attach();
+            element.autoplay = true;
+            element.controls = true;
+            audioHost.replaceChildren(element);
+            appendLog('Subscribed to remote audio track.');
+          }
+        });
+
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          appendLog(`Participant connected: ${participant.identity}`);
+        });
+
+        room.on(RoomEvent.Disconnected, () => {
+          joinButton.disabled = false;
+          leaveButton.disabled = true;
+          setStatus('Disconnected.');
+          appendLog('Room disconnected.');
+        });
+
+        try {
+          appendLog(`Connecting to ${session.livekit_url} in room ${session.room_name}.`);
+          await room.connect(session.livekit_url, session.participant_token);
+          setStatus(`Connected as ${session.participant_name}.`, true);
+          leaveButton.disabled = false;
+
+          const microphoneApiAvailable =
+            typeof navigator !== 'undefined' &&
+            navigator.mediaDevices &&
+            typeof navigator.mediaDevices.getUserMedia === 'function';
+
+          if (!microphoneApiAvailable) {
+            appendLog('Connected in listen-only mode because microphone APIs are unavailable in this browser context.');
+            return;
+          }
+
+          try {
+            await room.localParticipant.setMicrophoneEnabled(true);
+            appendLog(`Microphone enabled. Waiting for ${session.agent_name}.`);
+          } catch (error) {
+            appendLog(`Connected, but microphone publishing failed: ${error}`);
+          }
+        } catch (error) {
+          joinButton.disabled = false;
+          setStatus('Connect failed.');
+          appendLog(`Connection failed: ${error}`);
+        }
+      }
+
+      joinForm.addEventListener('submit', joinRoom);
+      leaveButton.addEventListener('click', leaveRoom);
+    </script>
+  </body>
+</html>

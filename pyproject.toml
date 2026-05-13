@@ -1,0 +1,39 @@
+[project]
+name = "livekit-integration"
+version = "0.1.0"
+description = "Voice agent system for local Kubernetes development with LiveKit"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "livekit-agents>=1.0.18",
+    "livekit-plugins-openai>=1.0.18",
+    "python-dotenv>=1.0.1",
+    "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.11.0",
+]
+kokoro-service = [
+    "kokoro>=0.9.4",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+voice_agent = ["static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

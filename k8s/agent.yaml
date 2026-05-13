@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-agent
+  namespace: voice-agent-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voice-agent
+  template:
+    metadata:
+      labels:
+        app: voice-agent
+    spec:
+      enableServiceLinks: false
+      hostNetwork: true
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1
+          - 8.8.8.8
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: voice-agent
+          image: livekit-integration:dev
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "voice_agent.agent", "start"]
+          envFrom:
+            - secretRef:
+                name: voice-agent-secrets
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
