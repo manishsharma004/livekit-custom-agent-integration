@@ -256,6 +256,7 @@ LiveKit is WebRTC infrastructure, so local Kubernetes networking matters.
 
 - `hostNetwork: true` is enabled for the LiveKit pod because RTC traffic needs direct port access.
 - `hostNetwork: true` is also enabled for the `voice-agent` pod so it can reach your host-local Ollama server at `127.0.0.1:12434` and your host-local Kokoro service at `127.0.0.1:18080` from inside MicroK8s.
+- The `voice-agent` pod must keep `dnsPolicy: ClusterFirstWithHostNet` so it can still resolve the in-cluster `livekit` service while using host networking.
 - A single LiveKit pod per node is the safe baseline.
 - For MicroK8s on a single local machine, `ws://127.0.0.1:7880` is the expected browser URL unless you override it.
 - For `kind`, `k3d`, or `minikube`, you may need extra port mappings or a dedicated node setup for browser-based testing.
